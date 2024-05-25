@@ -5,15 +5,15 @@ import (
 	"fmt"
 )
 
-type espchan chan string
+type espChan chan string
 
 type Esp struct {
-	entries map[string]espchan
+	entries map[string]espChan
 }
 
-func (e *Esp) RegisterEsp(deviceId string, messageChan espchan) {
+func (e *Esp) RegisterEsp(deviceId string, messageChan espChan) {
 	if e.entries == nil {
-		e.entries = make(map[string]espchan)
+		e.entries = make(map[string]espChan)
 	}
 
 	_, ok := e.entries[deviceId]
