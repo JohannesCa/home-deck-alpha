@@ -1,10 +1,8 @@
 package model
 
-type Command string
-
 const (
-	Healthcheck Command = "HEALTHCHECK"
-	Open        Command = "OPEN"
+	Healthcheck = "HEALTHCHECK"
+	Open        = "OPEN"
 )
 
 type Input struct {

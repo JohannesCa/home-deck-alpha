@@ -13,10 +13,6 @@ var addr = flag.String("addr", "0.0.0.0:8080", "http service address")
 
 var EspManager internal.Esp
 
-//func home(w http.ResponseWriter, r *http.Request) {
-//	homeTemplate.Execute(w, "ws://"+r.Host+"/webSocketConnect")
-//}
-
 func main() {
 	flag.Parse()
 	log.SetFlags(0)
@@ -27,7 +23,8 @@ func main() {
 	http.HandleFunc("/command", func(w http.ResponseWriter, r *http.Request) {
 		controller.SendCommand(w, r, EspManager.SendMessage)
 	})
-	//http.HandleFunc("/", home)
+
+	// http.HandleFunc("/", home)
 
 	if err := http.ListenAndServe(*addr, nil); err != nil {
 		log.Fatal(err)
@@ -38,4 +35,8 @@ func HttpEspManagerWrapper(w http.ResponseWriter, r *http.Request) {
 
 }
 
-//var homeTemplate = template.Must(template.New("").Parse(web.IndexHtml))
+// var homeTemplate = template.Must(template.New("").Parse(web.IndexHtml))
+
+// func home(w http.ResponseWriter, r *http.Request) {
+// 	homeTemplate.Execute(w, "ws://"+r.Host+"/webSocketConnect")
+// }
