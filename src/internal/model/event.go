@@ -2,66 +2,50 @@ package model
 
 import (
 	"encoding/json"
-	"fmt"
-	"strconv"
 	"time"
 )
 
-type EventType string
-
 const (
-	Registration EventType = "registration"
+	EventTypeRegistration string = "registration"
+	EventTypeCommand      string = "command"
+	EventTypeHeartbeat    string = "heartbeat"
 )
 
 type EspEvent struct {
-	Type      EventType  `json:"event"`
-	Timestamp CustomTime `json:"timestamp"`
-	Data      string     `json:"data"`
+	Type          string `json:"event"`
+	UnixTimestamp int    `json:"timestamp"`
+	Data          string `json:"data"`
 }
-
-/*
-{
-	"event":"registration",
-	"timestamp":1716513384,
-	"data":"{\"device_id\":\"1\",\"device_name\":\"test\"}"
-}
-*/
 
 func (e EspEvent) AsRegistrationEvent() (ev RegistrationEvent) {
 	json.Unmarshal([]byte(e.Data), &ev)
 	return
 }
 
-type RegistrationEvent struct {
-	DeviceId   string `json:"device_id"`
-	DeviceName string `json:"device_name"`
-	Location   struct {
-		Name string `json:"name"`
-		Lat  string `json:"lat"`
-		Long string `json:"long"`
-	} `json:"location"`
-}
-
-type CustomTime struct {
-	time.Time
-}
-
-func (ct *CustomTime) UnmarshalJSON(b []byte) (err error) {
-	n, err := strconv.ParseInt(string(b), 10, 64)
-	if err != nil {
-		return err
-	}
-	ct.Time = time.Unix(n, 0)
+func (e EspEvent) AsCommandEvent() (ev CommandEvent) {
+	json.Unmarshal([]byte(e.Data), &ev)
 	return
 }
 
-func (ct *CustomTime) MarshalJSON() ([]byte, error) {
-	if ct.Time.IsZero() {
-		return []byte("null"), nil
-	}
-	return []byte(fmt.Sprintf("\"%s\"", ct.Time.Format(time.RFC3339Nano))), nil
+func (e EspEvent) Serialize() (res []byte) {
+	res, _ = json.Marshal(e)
+	return
 }
 
-func (ct *CustomTime) String() string {
-	return ct.Time.Format(time.RFC3339)
+type RegistrationEvent struct {
+	DeviceId   string `json:"device_id"`
+	DeviceName string `json:"device_name"`
+}
+
+type CommandEvent struct {
+	Verb    string `json:"command"`
+	Message string `json:"message,omitempty"`
+}
+
+func NewCommandEvent(verb string) EspEvent {
+	return EspEvent{
+		Type:          EventTypeCommand,
+		UnixTimestamp: int(time.Now().Unix()),
+		Data:          verb,
+	}
 }

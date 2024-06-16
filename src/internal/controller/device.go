@@ -1,10 +1,12 @@
 package controller
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"time"
 
 	"home-deck-tower/internal"
 	"home-deck-tower/internal/model"
@@ -26,9 +28,9 @@ func WebSocketConnect(w http.ResponseWriter, r *http.Request, espManager *intern
 	}
 
 	var (
+		ctx, cancel      = context.WithCancel(r.Context())
 		registrationChan = make(chan string)
 		writeChan        = make(chan string)
-		errChan          = make(chan error)
 
 		registeredDeviceId string
 	)
@@ -41,37 +43,59 @@ func WebSocketConnect(w http.ResponseWriter, r *http.Request, espManager *intern
 		if err = c.Close(); err != nil {
 			fmt.Printf("failed to close channel: %s", err.Error())
 		}
+
+		close(registrationChan)
+		// close(writeChan)
 	}()
 
-	go func(c *websocket.Conn) {
+	go func() {
 		for {
-			mt, message, err := c.ReadMessage()
-			if err != nil {
-				errChan <- err
+			select {
+			case <-ctx.Done():
+				log.Println("ending go routine")
 				return
-			}
 
-			fmt.Printf("> Received a message from client: %s\n", string(message))
-
-			var ev model.EspEvent
-			err = json.Unmarshal(message, &ev)
-			if err != nil {
-				log.Printf("err readin: %v\n", err)
-				continue
-			}
-
-			if ev.Type == model.Registration {
-				regEv := ev.AsRegistrationEvent()
-				espManager.RegisterEsp(regEv.DeviceId, writeChan)
-
-				registrationChan <- regEv.DeviceId
-				err = c.WriteMessage(mt, []byte("reg ok"))
+			default:
+				mt, message, err := c.ReadMessage()
 				if err != nil {
-					fmt.Printf("[WARN] error writing registration response")
+					log.Printf("Failed to read message: %s\n", err.Error())
+					cancel()
+					return
+				}
+
+				fmt.Printf("> Received a message from client: %s\n", string(message))
+
+				var ev model.EspEvent
+				err = json.Unmarshal(message, &ev)
+				if err != nil {
+					log.Printf("err readin: %v\n", err)
+					continue
+				}
+
+				switch ev.Type {
+				case model.EventTypeRegistration:
+					regEv := ev.AsRegistrationEvent()
+					espManager.RegisterEsp(regEv.DeviceId, writeChan)
+
+					registrationChan <- regEv.DeviceId
+
+					regEvResponse := ev
+					regEvResponse.UnixTimestamp = int(time.Now().Unix())
+					regEvResponse.Data = "ok"
+
+					response, _ := json.Marshal(regEvResponse)
+					err = c.WriteMessage(mt, response)
+					if err != nil {
+						fmt.Printf("[WARN] error writing registration response")
+					}
+
+				case model.EventTypeCommand:
+					commEv := ev.AsCommandEvent()
+					log.Printf("Response from command \"%s\": %s\n", commEv.Verb, commEv.Message)
 				}
 			}
 		}
-	}(c)
+	}()
 
 	for {
 		select {
@@ -82,11 +106,14 @@ func WebSocketConnect(w http.ResponseWriter, r *http.Request, espManager *intern
 			fmt.Printf("< Sending message to client: %s\n", message)
 			err = c.WriteMessage(websocket.TextMessage, []byte(message))
 			if err != nil {
-				errChan <- err
+				writeChan <- err.Error()
+				log.Printf("Failed to send message: %s\n", err.Error())
+				cancel()
 			}
+			writeChan <- "ok"
 
-		case err := <-errChan:
-			fmt.Printf("received error: %s\n", err.Error())
+		case <-ctx.Done():
+			fmt.Println("Context deadline")
 			return
 		}
 	}
