@@ -3,15 +3,14 @@ package controller
 import (
 	"encoding/json"
 	"io"
+	"log"
 	"net/http"
 
-	"github.com/rs/zerolog/log"
 	"home-deck-tower/internal/model"
 )
 
 func SendCommand(w http.ResponseWriter, r *http.Request, sendMessage func(deviceIdDest, message string) error) {
-	logger := log.With().Str("request_id", r.Header.Get("request-id")).Logger()
-	logger.Info().Msgf("Staring http request: %s", r.Host)
+	log.Printf("Staring http request: %s\n", r.Host)
 
 	defer r.Body.Close()
 
@@ -22,7 +21,7 @@ func SendCommand(w http.ResponseWriter, r *http.Request, sendMessage func(device
 
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to read request body")
+		log.Printf("failed to read request body: %s\n", err.Error())
 		http.Error(w, "please contact support", http.StatusInternalServerError)
 		return
 	}
@@ -30,15 +29,15 @@ func SendCommand(w http.ResponseWriter, r *http.Request, sendMessage func(device
 	var in model.Input
 	err = json.Unmarshal(reqBody, &in)
 	if err != nil {
-		logger.Error().Err(err).Msg("failed to parse request body")
+		log.Printf("failed to parse request body: %s\n", err.Error())
 		http.Error(w, "please contact support", http.StatusInternalServerError)
 		return
 	}
 
 	var response model.Output
-	logger.Debug().Msgf("Sending command \"%s\" to device [%s]\n", in.Command, in.DeviceId)
+	log.Printf("Sending command \"%s\" to device [%s]\n", in.Command, in.DeviceId)
 	if err = sendMessage(in.DeviceId, in.Command); err != nil {
-		logger.Error().Err(err).Msg("failed to send command")
+		log.Printf("failed to send command: %s\n", err.Error())
 
 		response = model.Output{
 			DeviceId: in.DeviceId,
@@ -49,13 +48,13 @@ func SendCommand(w http.ResponseWriter, r *http.Request, sendMessage func(device
 		w.WriteHeader(http.StatusBadRequest)
 		_, err = w.Write(response.Serialize())
 		if err != nil {
-			logger.Error().Err(err).Msg("failed to write message body")
+			log.Printf("failed to write message body: %s\n", err.Error())
 		}
 
 		return
 	}
 
-	logger.Info().Msgf("Command sent successfully")
+	log.Println("Command sent successfully")
 
 	response = model.Output{
 		DeviceId: in.DeviceId,
