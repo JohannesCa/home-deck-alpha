@@ -1,6 +1,6 @@
 # Home Deck Alpha
 
-Home Deck Alpha is a private project on alpha develpoment to provide control over designated IoT devices.
+Home Deck Alpha is a POC project to provide control over designated IoT devices.
 It manages connections with devices using a pool of websockets, wich each device has a dedicated communication channel.
 
 ---
