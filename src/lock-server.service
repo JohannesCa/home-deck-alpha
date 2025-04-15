@@ -1,0 +1,16 @@
+[Unit]
+Description=Smart Lock Server Daemon
+After=network.target
+
+[Service]
+User=root
+Restart=on-failure
+Type=simple
+ExecStart=/usr/local/bin/lock-server
+WorkingDirectory=/usr/local/bin
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=lock-server
+
+[Install]
+WantedBy=multi-user.target

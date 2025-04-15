@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -25,7 +26,7 @@ func main() {
 	})
 
 	// http.HandleFunc("/", home)
-
+	fmt.Printf(":: Started serving on %s\n\n", *addr)
 	if err := http.ListenAndServe(*addr, nil); err != nil {
 		log.Fatal(err)
 	}
